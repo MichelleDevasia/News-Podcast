@@ -9,7 +9,11 @@ import urllib.parse
 from gtts import gTTS
 
 # --- CONFIGURATION & HARDCODED API KEY ---
-NEWSDATA_API_KEY = "pub_36a7f0de480e4be6b9861d814c0b5f02"
+# Check Streamlit secrets first (for cloud deployment), fallback to hardcoded key
+if "newsdata_api_key" in st.secrets:
+    NEWSDATA_API_KEY = st.secrets["newsdata_api_key"]
+else:
+    NEWSDATA_API_KEY = "pub_36a7f0de480e4be6b9861d814c0b5f02"
 
 # Set page config for a premium look
 st.set_page_config(
