@@ -6,6 +6,10 @@ import io
 import re
 from gtts import gTTS
 
+# --- CONFIGURATION & HARDCODED API KEY ---
+# Enter your NewsData.io API Key here to avoid entering it every time you launch the app.
+NEWSDATA_API_KEY = "YOUR_API_KEY_HERE"
+
 # Set page config for a premium look
 st.set_page_config(
     page_title="News Podcast & API Tester",
@@ -171,39 +175,8 @@ def is_similar_to_existing(title, existing_titles, threshold=0.45):
                 return True
     return False
 
-
-# High-density AI summarization using Gemini 1.5 Flash via REST API
-def gemini_summarize(article_title, description, content, gemini_api_key):
-    # Fallback to local summary if Gemini Key is not provided
-    if not gemini_api_key or not gemini_api_key.strip():
-        return local_summarize_fallback(article_title, description, content)
-        
-    full_text = f"Title: {article_title}\nDescription: {description}\nContent: {content}"
-    prompt = f"Ingest the following news article and compress it into a simple, concise 2-to-3 sentence summary. Keep it factual and brief.\n\nNews Data:\n{full_text}"
-    model = "gemini-1.5-flash"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_api_key.strip()}"
-    payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }]
-    }
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=12)
-        if response.status_code == 200:
-            res_json = response.json()
-            summary_text = res_json['candidates'][0]['content']['parts'][0]['text']
-            return summary_text.strip()
-    except Exception:
-        pass
-        
-    return local_summarize_fallback(article_title, description, content)
-
-# Fallback method parsing text using local rules
-def local_summarize_fallback(title, description, content):
+# Local extractive summarizer parsing text using local rules (2-3 sentences)
+def summarize_text_concise(title, description, content):
     text_source = description if description and len(description.strip()) > 30 else content
     if not text_source or not text_source.strip():
         text_source = title
@@ -296,7 +269,7 @@ CUSTOM_CATEGORIES = {
     },
     "Crime & Public Safety": {
         "api_category": "general",
-        "keywords": ["crime", "police", "investigation", "scam", "arrest", "law enforcement", "safety", "threat", "robbery", "theft", "murder"]
+        "keywords": ["crime", "police", "investification", "scam", "arrest", "law enforcement", "safety", "threat", "robbery", "theft", "murder"]
     },
     "Legal & Judiciary": {
         "api_category": "politics",
@@ -426,17 +399,16 @@ if "last_params" not in st.session_state:
 # --- SIDEBAR CONFIGURATION ---
 st.sidebar.header("🔑 Authentication & Params")
 
-api_key = st.sidebar.text_input(
-    label="NewsData.io API Key",
-    type="password",
-    help="Enter your API Key generated from NewsData.io dashboard."
-)
+# Load API Key from hardcoded constant
+api_key = NEWSDATA_API_KEY
 
-gemini_api_key = st.sidebar.text_input(
-    label="Gemini API Key (Optional)",
-    type="password",
-    help="Enter Gemini API key to enable AI summarization. If omitted, local filters will run."
-)
+# If it is the default placeholder, show the input field to let the user enter it
+if not api_key or api_key == "YOUR_API_KEY_HERE":
+    api_key = st.sidebar.text_input(
+        label="NewsData.io API Key",
+        type="password",
+        help="Enter your API Key generated from NewsData.io dashboard."
+    )
 
 country_labels = list(COUNTRIES.keys())
 default_country_index = country_labels.index("India (in)")
@@ -516,7 +488,6 @@ fetch_button = st.sidebar.button(
 # Detect changes
 current_params = {
     "api_key": api_key,
-    "gemini_api_key": gemini_api_key,
     "country_code": country_code,
     "category": selected_custom_category,
     "query": query,
@@ -538,8 +509,8 @@ if params_changed:
 
 # --- FETCH ACTION ---
 if fetch_button:
-    if not api_key.strip():
-        st.error("⚠️ NewsData.io API Key is required. Please enter it in the sidebar.")
+    if not api_key or api_key == "YOUR_API_KEY_HERE" or not api_key.strip():
+        st.error("⚠️ NewsData.io API Key is required. Please write your key at the top of app.py or enter it in the sidebar.")
     else:
         cat_info = CUSTOM_CATEGORIES[selected_custom_category]
         api_category = cat_info["api_category"]
@@ -694,10 +665,10 @@ if st.session_state["fetched_data"] is not None:
                 description = (article.get("description") or "")
                 content = (article.get("content") or "")
                 
-                # First summarize the raw text to 2-3 sentences
-                summary_text = gemini_summarize(title, description, content, gemini_api_key)
+                # Primary local summary (2-3 sentences)
+                summary_text = summarize_text_concise(title, description, content)
                 
-                # Then translate both title and summary to target language
+                # Translate to target language
                 if auto_translate:
                     title = translate_to_target_lang(title, audio_lang_code)
                     summary_text = translate_to_target_lang(summary_text, audio_lang_code)
@@ -735,7 +706,7 @@ if st.session_state["fetched_data"] is not None:
             
             # Button to trigger full podcast script compilation
             if st.button("🎧 Generate Podcast Briefing", type="primary", use_container_width=True):
-                # Build unified script in the target language (gTTS handles speech synthesis)
+                # Build unified script
                 if audio_lang_code == "ml":
                     intro = f"നമസ്കാരം, {selected_custom_category} വാർത്താ പോഡ്‌കാസ്റ്റിലേക്ക് സ്വാഗതം. ഇന്നത്തെ പ്രധാന വാർത്തകൾ ഇതാ. "
                     outro = "വാർത്തകൾ അവസാനിച്ചു. ശ്രവിച്ചതിന് നന്ദി."
@@ -842,4 +813,4 @@ if st.session_state["fetched_data"] is not None:
                                 st.audio(single_audio, format="audio/mp3", autoplay=True)
 else:
     # Initial state helper message
-    st.info("👈 Enter your API Keys in the sidebar and configure your parameters, then click **Fetch News Data** to test.")
+    st.info("👈 Configure your parameters, then click **Fetch News Data** to test.")
