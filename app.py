@@ -4,11 +4,13 @@ from deep_translator import GoogleTranslator
 from datetime import datetime
 import io
 import re
+import xml.etree.ElementTree as ET
+import urllib.parse
 from gtts import gTTS
 
 # --- CONFIGURATION & HARDCODED API KEY ---
 # Enter your NewsData.io API Key here to avoid entering it every time you launch the app.
-NEWSDATA_API_KEY = "YOUR_API_KEY_HERE"
+NEWSDATA_API_KEY = "pub_36a7f0de480e4be6b9861d814c0b5f02"
 
 # Set page config for a premium look
 st.set_page_config(
@@ -132,12 +134,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# List of trusted source patterns to boost
+TRUSTED_SOURCE_SUBSTRINGS = [
+    "bbc", "dw", "deutsche welle", "financial times", "nytimes", "new york times", 
+    "guardian", "al jazeera", "aljazeera", "economist", "mit technology review", 
+    "nature", "the hindu", "thehindu", "indian express", "indianexpress", 
+    "ndtv", "hindustan times", "hindustantimes", "times of india", "timesofindia", 
+    "economic times", "economictimes", "livemint", "mint", "business standard", 
+    "businessstandard", "the print", "theprint", "newslaundry", "the wire", "thewire", 
+    "scroll.in", "scroll", "factchecker", "alt news", "altnews", "manorama", 
+    "mathrubhumi", "prajavani", "vijayavani", "dailythanthi", "dina thanthi", "dinamalar"
+]
+
 # Helper function to translate text to a target language
 def translate_to_target_lang(text, target_lang):
     if not text or not text.strip():
         return text
     try:
-        # For English, only translate if it contains non-ASCII characters to save speed
         if target_lang == 'en':
             if any(ord(char) > 127 for char in text):
                 return GoogleTranslator(source='auto', target='en').translate(text)
@@ -191,10 +204,73 @@ def summarize_text_concise(title, description, content):
     # Return first 3 sentences
     return " ".join(sentences[:3])
 
+# Google News RSS Fetcher (Outside Source Fallback)
+def fetch_google_news(query_text, country_code, lang_code="en"):
+    # Map country codes to Google News RSS hl/gl
+    hl = "en"
+    gl = "US"
+    ceid = "US:en"
+    
+    if country_code == "in":
+        hl = "en-IN" if lang_code == "en" else lang_code
+        gl = "IN"
+        ceid = f"IN:{hl}"
+    elif country_code == "us":
+        gl = "US"
+        hl = "en"
+        ceid = "US:en"
+    elif country_code == "gb":
+        gl = "GB"
+        hl = "en-GB"
+        ceid = "GB:en"
+        
+    encoded_q = urllib.parse.quote(query_text)
+    url = f"https://news.google.com/rss/search?q={encoded_q}&hl={hl}&gl={gl}&ceid={ceid}"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            root = ET.fromstring(response.content)
+            articles = []
+            for item in root.findall(".//item"):
+                title = item.find("title").text if item.find("title") is not None else ""
+                link = item.find("link").text if item.find("link") is not None else ""
+                pub_date_str = item.find("pubDate").text if item.find("pubDate") is not None else ""
+                description = item.find("description").text if item.find("description") is not None else ""
+                
+                source_id = "Google News"
+                if " - " in title:
+                    parts = title.rsplit(" - ", 1)
+                    title = parts[0]
+                    source_id = parts[1]
+                    
+                # Clean description HTML tags
+                description_clean = re.sub(r'<[^>]*>', '', description)
+                
+                # Format date to match API style if possible
+                try:
+                    dt = datetime.strptime(pub_date_str, "%a, %d %b %Y %H:%M:%S %Z")
+                    formatted_pub_date = dt.strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    formatted_pub_date = pub_date_str
+                
+                articles.append({
+                    "title": title,
+                    "link": link,
+                    "description": description_clean,
+                    "pubDate": formatted_pub_date,
+                    "source_id": source_id,
+                    "category": ["general"],
+                    "country": [country_code]
+                })
+            return articles
+    except Exception:
+        pass
+    return []
+
 # TTS Audio Generation Helper
 def generate_audio(text, lang='en', tld='com'):
     try:
-        # Only use tld for English regional accents
         if lang == 'en':
             tts = gTTS(text=text, lang=lang, tld=tld, slow=False)
         else:
@@ -217,14 +293,24 @@ def parse_date(date_str):
         except Exception:
             return datetime.min
 
-# Composite scoring function to rank article by Importance + Recency
+# Composite scoring function to rank article by Importance + Recency + Trusted Source Boost
 def calculate_article_score(article, user_query, cat_keywords):
     score = 0.0
     title = (article.get("title") or "").lower()
     description = (article.get("description") or "").lower()
     content = (article.get("content") or "").lower()
+    source_id = str(article.get("source_id") or "").lower()
     
-    # 1. Importance matching (User Query)
+    # 1. Trusted Source Boost (Float priority sources to top)
+    is_trusted = False
+    for ts in TRUSTED_SOURCE_SUBSTRINGS:
+        if ts in source_id:
+            is_trusted = True
+            break
+    if is_trusted:
+        score += 45.0  # Heavy boost to float trusted items
+        
+    # 2. Importance matching (User Query)
     if user_query:
         uq = user_query.lower()
         if uq in title:
@@ -234,7 +320,7 @@ def calculate_article_score(article, user_query, cat_keywords):
         elif uq in content:
             score += 3.0
             
-    # 2. Importance matching (Category Keywords)
+    # 3. Importance matching (Category Keywords)
     for kw in cat_keywords:
         kw_l = kw.lower()
         if kw_l in title:
@@ -242,7 +328,7 @@ def calculate_article_score(article, user_query, cat_keywords):
         elif kw_l in description:
             score += 4.0
             
-    # 3. Recency Boost (Freshness)
+    # 4. Recency Boost (Freshness)
     pub_date_str = article.get("pubDate")
     if pub_date_str:
         pub_dt = parse_date(pub_date_str)
@@ -251,7 +337,6 @@ def calculate_article_score(article, user_query, cat_keywords):
         if elapsed_hours < 0:
             elapsed_hours = 0
             
-        # Give higher weight to younger news
         recency_score = 30.0 / (1.0 + (elapsed_hours / 12.0))
         score += recency_score
         
@@ -263,13 +348,17 @@ st.markdown("<p class='subtitle'>Convert matching news articles from NewsData.io
 
 # Mapping of custom user-friendly categories to NewsData.io API categories and keywords
 CUSTOM_CATEGORIES = {
+    "General": {
+        "api_category": None, # Omit category to fetch mixed top headlines
+        "keywords": ["news", "update", "latest", "today", "report"]
+    },
     "Politics & Governance": {
         "api_category": "politics",
         "keywords": ["politics", "election", "political party", "assembly", "policy", "government scheme", "minister", "parliament", "governance"]
     },
     "Crime & Public Safety": {
-        "api_category": "general",
-        "keywords": ["crime", "police", "investification", "scam", "arrest", "law enforcement", "safety", "threat", "robbery", "theft", "murder"]
+        "api_category": None, # Unsupported native category, search via keywords
+        "keywords": ["crime", "police", "investigation", "scam", "arrest", "law enforcement", "safety", "threat", "robbery", "theft", "murder"]
     },
     "Legal & Judiciary": {
         "api_category": "politics",
@@ -308,7 +397,7 @@ CUSTOM_CATEGORIES = {
         "keywords": ["health", "medicine", "healthcare", "epidemic", "pharma", "clinical", "disease", "vaccine", "doctor"]
     },
     "Education & Careers": {
-        "api_category": "general",
+        "api_category": None, # Unsupported native category, search via keywords
         "keywords": ["education", "exam", "university", "curriculum", "career", "admission", "school", "board exam", "student"]
     },
     "Environment & Climate Change": {
@@ -348,7 +437,7 @@ CUSTOM_CATEGORIES = {
         "keywords": ["food", "culinary", "restaurant", "recipe", "chef", "cooking", "cuisine", "agriculture", "dining"]
     },
     "Human Interest & Profiles": {
-        "api_category": "general",
+        "api_category": None, # Unsupported native category, search via keywords
         "keywords": ["story", "profile", "community", "hero", "obituary", "inspiring", "feature story", "tribute"]
     },
     "Artificial Intelligence & Automation": {
@@ -395,6 +484,8 @@ if "fetched_data" not in st.session_state:
     st.session_state["fetched_data"] = None
 if "last_params" not in st.session_state:
     st.session_state["last_params"] = {}
+if "using_outside_source" not in st.session_state:
+    st.session_state["using_outside_source"] = False
 
 # --- SIDEBAR CONFIGURATION ---
 st.sidebar.header("🔑 Authentication & Params")
@@ -424,7 +515,7 @@ category_list = list(CUSTOM_CATEGORIES.keys())
 selected_custom_category = st.sidebar.selectbox(
     label="Category",
     options=category_list,
-    index=category_list.index("Politics & Governance")
+    index=category_list.index("General")
 )
 
 query = st.sidebar.text_input(
@@ -474,8 +565,7 @@ strict_category = st.sidebar.checkbox(
 
 auto_translate = st.sidebar.checkbox(
     label="Translate to Selected Language",
-    value=True,
-    help="Automatically translate titles & descriptions to the selected podcast language."
+    value=True
 )
 
 # Fetch Button
@@ -512,23 +602,33 @@ if fetch_button:
     if not api_key or api_key == "YOUR_API_KEY_HERE" or not api_key.strip():
         st.error("⚠️ NewsData.io API Key is required. Please write your key at the top of app.py or enter it in the sidebar.")
     else:
+        st.session_state["using_outside_source"] = False
         cat_info = CUSTOM_CATEGORIES[selected_custom_category]
         api_category = cat_info["api_category"]
         
+        # Build logical search queries to pass to the API
         cat_keywords = cat_info["keywords"][:4]
         cat_query_string = " OR ".join(f'"{kw}"' if " " in kw else kw for kw in cat_keywords)
         
-        if query.strip():
-            final_q = f"({query.strip()}) AND ({cat_query_string})"
+        if selected_custom_category == "General":
+            # For General news, keep q simple (use user query if present, otherwise omit q to get general headlines)
+            if query.strip():
+                final_q = query.strip()
+            else:
+                final_q = None
         else:
-            final_q = cat_query_string
+            if query.strip():
+                final_q = f"({query.strip()}) AND ({cat_query_string})"
+            else:
+                final_q = cat_query_string
             
         params = {
-            "apikey": api_key,
-            "category": api_category,
-            "q": final_q
+            "apikey": api_key
         }
-        
+        if api_category:
+            params["category"] = api_category
+        if final_q:
+            params["q"] = final_q
         if country_code != "worldwide":
             params["country"] = country_code
             
@@ -577,22 +677,18 @@ if fetch_button:
                         api_error_occurred = True
                         break
                 
-                if not api_error_occurred and all_results:
+                # If we successfully parsed, save results. Even if 0 results, we let display logic fall back to outside source.
+                if not api_error_occurred:
                     st.session_state["fetched_data"] = {"status": "success", "results": all_results}
                     st.session_state["last_params"] = current_params.copy()
-                    st.success("🎉 Successfully fetched news data!")
                     
             except requests.exceptions.RequestException as e:
                 st.error(f"🔌 Connection/Request Error: {str(e)}")
 
-# --- DISPLAY LOGIC ---
+# --- DISPLAY & FILTERING LOGIC ---
 if st.session_state["fetched_data"] is not None:
     data = st.session_state["fetched_data"]
     
-    # Show raw JSON response
-    with st.expander("Raw JSON Response", expanded=False):
-        st.json(data)
-        
     # Process articles
     raw_articles = data.get("results", [])
     seen_titles = set()
@@ -608,11 +704,11 @@ if st.session_state["fetched_data"] is not None:
         if not title_clean:
             continue
             
-        # Check for exact duplicate OR highly similar duplicate from other sources
+        # Check similarity
         if title_clean.lower() in [t.lower() for t in seen_titles] or is_similar_to_existing(title_clean, seen_titles, threshold=0.45):
             continue
             
-        if strict_category:
+        if strict_category and selected_custom_category != "General":
             title_text = (article.get("title") or "").lower()
             desc_text = (article.get("description") or "").lower()
             content_text = (article.get("content") or "").lower()
@@ -637,7 +733,36 @@ if st.session_state["fetched_data"] is not None:
             mini_articles.append(article)
         else:
             main_articles.append(article)
+            
+    # --- FALLBACK TO OUTSIDE SOURCE (Google News RSS) IF NO INFO ---
+    if not main_articles and not mini_articles:
+        st.session_state["using_outside_source"] = True
         
+        # Build query for RSS
+        rss_query = query.strip() if query.strip() else " OR ".join(cat_keywords[:3])
+        if selected_custom_category == "General" and not query.strip():
+            rss_query = "latest world news"
+            
+        with st.spinner("No results found on NewsData.io. Fetching from Google News RSS..."):
+            raw_articles = fetch_google_news(rss_query, country_code, audio_lang_code)
+            
+        seen_titles = set()
+        for article in raw_articles:
+            title = article.get("title") or ""
+            title_clean = title.strip()
+            if not title_clean:
+                continue
+            if title_clean.lower() in [t.lower() for t in seen_titles] or is_similar_to_existing(title_clean, seen_titles, threshold=0.45):
+                continue
+            seen_titles.add(title_clean)
+            
+            desc = article.get("description")
+            if not desc or not desc.strip() or desc.strip().lower() in ["no description provided.", "no description", "n/a"]:
+                mini_articles.append(article)
+            else:
+                main_articles.append(article)
+                
+    # --- DOCK & RANK ARTICLES ---
     scored_main = []
     for art in main_articles:
         score = calculate_article_score(art, query, cat_keywords)
@@ -653,9 +778,18 @@ if st.session_state["fetched_data"] is not None:
     final_main = [art for score, art in scored_main[:max_articles]]
     final_mini = [art for score, art in scored_mini[:max_articles - len(final_main)]]
     
+    # Render Raw JSON only if we are using NewsData.io (Google News RSS parsed custom list is not raw API JSON)
+    if not st.session_state["using_outside_source"]:
+        with st.expander("Raw JSON Response", expanded=False):
+            st.json(data)
+            
     if not final_main and not final_mini:
-        st.info("ℹ️ No unique articles found matching your strict criteria. Try disabling 'Strict Country Match' or 'Strict Category Match'.")
+        st.info("ℹ️ No articles found matching your criteria.")
     else:
+        # Show Banner if utilizing Google News RSS
+        if st.session_state["using_outside_source"]:
+            st.warning("⚡ Sourced from Google News feeds (no data found on NewsData.io).")
+            
         processed_main = []
         processed_mini = []
         
@@ -762,14 +896,25 @@ if st.session_state["fetched_data"] is not None:
         # Display Main News Cards
         if processed_main:
             st.markdown(f"### 📰 Featured Stories under **{selected_custom_category}** (Ranked by Relevancy & Date)")
-            for art in processed_main:
+            for idx, art in enumerate(processed_main):
+                # Highlight trusted source indicator
+                source_display = art['source_id']
+                is_trusted_label = False
+                for ts in TRUSTED_SOURCE_SUBSTRINGS:
+                    if ts in art['source_id'].lower():
+                        is_trusted_label = True
+                        break
+                
+                trusted_badge = '<span class="badge" style="background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71;">⭐ Trusted Source</span>' if is_trusted_label else ''
+                
                 card_html = f"""
                 <div class="article-card">
                     <div class="article-title"><a href="{art['link']}" target="_blank">{art['title']}</a></div>
                     <div class="meta-container">
                         <span class="badge badge-category">{selected_custom_category}</span>
                         <span class="badge badge-country">Country: {art['country']}</span>
-                        <span class="badge badge-source">Source: {art['source_id']}</span>
+                        <span class="badge badge-source">Source: {source_display}</span>
+                        {trusted_badge}
                         <span class="badge badge-score">🔥 Match Score: {art['score']}</span>
                     </div>
                     <div style="font-size: 0.98rem; margin-bottom: 0.8rem; line-height: 1.5; font-style: italic; border-left: 2px solid #FF4B4B; padding-left: 8px;">

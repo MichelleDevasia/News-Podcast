@@ -1,0 +1,117 @@
+{
+  "Politics & Governance": {
+    "total_returned": 10,
+    "strict_matched": 3,
+    "status": "success"
+  },
+  "Crime & Public Safety": {
+    "status": "error",
+    "code": 422,
+    "text": "{\"status\":\"error\",\"results\":{\"message\":\"The category you provided does not exist in our database.\",\"code\":\"UnsupportedFilter\",\"invalid_category\":\"general\"}}\n"
+  },
+  "Legal & Judiciary": {
+    "total_returned": 10,
+    "strict_matched": 2,
+    "status": "success"
+  },
+  "Defense & National Security": {
+    "total_returned": 10,
+    "strict_matched": 3,
+    "status": "success"
+  },
+  "International & World News": {
+    "total_returned": 10,
+    "strict_matched": 7,
+    "status": "success"
+  },
+  "Business & Corporate": {
+    "total_returned": 10,
+    "strict_matched": 4,
+    "status": "success"
+  },
+  "Finance & Markets": {
+    "total_returned": 10,
+    "strict_matched": 5,
+    "status": "success"
+  },
+  "Economy & Trade": {
+    "total_returned": 10,
+    "strict_matched": 4,
+    "status": "success"
+  },
+  "Technology & Software": {
+    "total_returned": 10,
+    "strict_matched": 6,
+    "status": "success"
+  },
+  "Science & Space Exploration": {
+    "total_returned": 10,
+    "strict_matched": 3,
+    "status": "success"
+  },
+  "Health & Medicine": {
+    "total_returned": 10,
+    "strict_matched": 7,
+    "status": "success"
+  },
+  "Education & Careers": {
+    "status": "error",
+    "code": 422,
+    "text": "{\"status\":\"error\",\"results\":{\"message\":\"The category you provided does not exist in our database.\",\"code\":\"UnsupportedFilter\",\"invalid_category\":\"general\"}}\n"
+  },
+  "Environment & Climate Change": {
+    "total_returned": 10,
+    "strict_matched": 7,
+    "status": "success"
+  },
+  "Weather & Natural Disasters": {
+    "total_returned": 10,
+    "strict_matched": 8,
+    "status": "success"
+  },
+  "Infrastructure & Real Estate": {
+    "total_returned": 10,
+    "strict_matched": 5,
+    "status": "success"
+  },
+  "Sports & Athletics": {
+    "total_returned": 10,
+    "strict_matched": 6,
+    "status": "success"
+  },
+  "Entertainment & Cinema": {
+    "total_returned": 10,
+    "strict_matched": 7,
+    "status": "success"
+  },
+  "Pop Culture & Celebrity": {
+    "total_returned": 10,
+    "strict_matched": 3,
+    "status": "success"
+  },
+  "Lifestyle & Wellness": {
+    "total_returned": 10,
+    "strict_matched": 3,
+    "status": "success"
+  },
+  "Travel & Tourism": {
+    "total_returned": 10,
+    "strict_matched": 5,
+    "status": "success"
+  },
+  "Food & Culinary Arts": {
+    "total_returned": 10,
+    "strict_matched": 9,
+    "status": "success"
+  },
+  "Human Interest & Profiles": {
+    "status": "error",
+    "code": 422,
+    "text": "{\"status\":\"error\",\"results\":{\"message\":\"The category you provided does not exist in our database.\",\"code\":\"UnsupportedFilter\",\"invalid_category\":\"general\"}}\n"
+  },
+  "Artificial Intelligence & Automation": {
+    "total_returned": 10,
+    "strict_matched": 10,
+    "status": "success"
+  }
+}
