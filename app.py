@@ -130,6 +130,16 @@ st.markdown("""
         color: #95a5a6;
         margin-top: 0.5rem;
     }
+    
+    .description-text {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.5em;
+        height: 4.5em;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -982,7 +992,7 @@ if st.session_state["fetched_data"] is not None:
 {sent_badge}
 <span class="badge badge-score">🔥 Match Score: {art['score']}</span>
 </div>
-<div style="font-size: 0.98rem; margin-bottom: 0.8rem; line-height: 1.5; font-style: italic; border-left: 2px solid #FF4B4B; padding-left: 8px;">
+<div class="description-text" style="font-size: 0.98rem; margin-bottom: 0.8rem; font-style: italic; border-left: 2px solid #FF4B4B; padding-left: 8px;">
 {art['summary']}
 </div>
 <div class="article-date">📅 Published: {art['pub_date']}</div>
