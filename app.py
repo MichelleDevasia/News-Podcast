@@ -9,7 +9,6 @@ import urllib.parse
 from gtts import gTTS
 
 # --- CONFIGURATION & HARDCODED API KEY ---
-# Enter your NewsData.io API Key here to avoid entering it every time you launch the app.
 NEWSDATA_API_KEY = "pub_36a7f0de480e4be6b9861d814c0b5f02"
 
 # Set page config for a premium look
@@ -206,7 +205,6 @@ def summarize_text_concise(title, description, content):
 
 # Google News RSS Fetcher (Outside Source Fallback)
 def fetch_google_news(query_text, country_code, lang_code="en"):
-    # Map country codes to Google News RSS hl/gl
     hl = "en"
     gl = "US"
     ceid = "US:en"
@@ -244,10 +242,8 @@ def fetch_google_news(query_text, country_code, lang_code="en"):
                     title = parts[0]
                     source_id = parts[1]
                     
-                # Clean description HTML tags
                 description_clean = re.sub(r'<[^>]*>', '', description)
                 
-                # Format date to match API style if possible
                 try:
                     dt = datetime.strptime(pub_date_str, "%a, %d %b %Y %H:%M:%S %Z")
                     formatted_pub_date = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -268,7 +264,52 @@ def fetch_google_news(query_text, country_code, lang_code="en"):
         pass
     return []
 
-# TTS Audio Generation Helper
+# Helper to calculate news sentiment scoring
+def get_news_sentiment(title, description):
+    text = (title + " " + description).lower()
+    
+    negative_words = {"kill", "die", "crash", "dead", "arrest", "scam", "crisis", "fire", "threat", 
+                      "clash", "loss", "inflation", "protest", "strike", "court", "accuse", "warn", "suspect"}
+                      
+    positive_words = {"win", "gain", "grow", "success", "launch", "develop", "benefit", "celebrate", 
+                      "support", "peace", "summit", "achieve", "rescue", "save", "profit", "boost"}
+                      
+    words = set(re.findall(r'\b\w+\b', text))
+    neg_hits = len(words.intersection(negative_words))
+    pos_hits = len(words.intersection(positive_words))
+    
+    if neg_hits > pos_hits:
+        return "Negative"
+    elif pos_hits > neg_hits:
+        return "Positive"
+    else:
+        return "Neutral"
+
+# Dual-Host Audio Generation Helper (voice modulation by alternating accents/speeds)
+def generate_dual_host_audio(segments, lang_code, accent_tld):
+    combined_bytes = b""
+    for text, host_num in segments:
+        try:
+            if lang_code == "en":
+                # Alternate TLDs for English (US vs UK accent)
+                current_tld = accent_tld if host_num == 0 else "co.uk"
+                tts = gTTS(text=text, lang=lang_code, tld=current_tld, slow=False)
+            else:
+                # Alternate speeds for non-English languages
+                current_slow = False if host_num == 0 else True
+                tts = gTTS(text=text, lang=lang_code, slow=current_slow)
+            
+            fp = io.BytesIO()
+            tts.write_to_fp(fp)
+            combined_bytes += fp.getvalue()
+        except Exception:
+            pass
+            
+    if combined_bytes:
+        return io.BytesIO(combined_bytes)
+    return None
+
+# gTTS single-speaker audio generator
 def generate_audio(text, lang='en', tld='com'):
     try:
         if lang == 'en':
@@ -308,7 +349,7 @@ def calculate_article_score(article, user_query, cat_keywords):
             is_trusted = True
             break
     if is_trusted:
-        score += 45.0  # Heavy boost to float trusted items
+        score += 45.0
         
     # 2. Importance matching (User Query)
     if user_query:
@@ -349,7 +390,7 @@ st.markdown("<p class='subtitle'>Convert matching news articles from NewsData.io
 # Mapping of custom user-friendly categories to NewsData.io API categories and keywords
 CUSTOM_CATEGORIES = {
     "General": {
-        "api_category": None, # Omit category to fetch mixed top headlines
+        "api_category": None,
         "keywords": ["news", "update", "latest", "today", "report"]
     },
     "Politics & Governance": {
@@ -357,7 +398,7 @@ CUSTOM_CATEGORIES = {
         "keywords": ["politics", "election", "political party", "assembly", "policy", "government scheme", "minister", "parliament", "governance"]
     },
     "Crime & Public Safety": {
-        "api_category": None, # Unsupported native category, search via keywords
+        "api_category": None,
         "keywords": ["crime", "police", "investigation", "scam", "arrest", "law enforcement", "safety", "threat", "robbery", "theft", "murder"]
     },
     "Legal & Judiciary": {
@@ -397,7 +438,7 @@ CUSTOM_CATEGORIES = {
         "keywords": ["health", "medicine", "healthcare", "epidemic", "pharma", "clinical", "disease", "vaccine", "doctor"]
     },
     "Education & Careers": {
-        "api_category": None, # Unsupported native category, search via keywords
+        "api_category": None,
         "keywords": ["education", "exam", "university", "curriculum", "career", "admission", "school", "board exam", "student"]
     },
     "Environment & Climate Change": {
@@ -437,7 +478,7 @@ CUSTOM_CATEGORIES = {
         "keywords": ["food", "culinary", "restaurant", "recipe", "chef", "cooking", "cuisine", "agriculture", "dining"]
     },
     "Human Interest & Profiles": {
-        "api_category": None, # Unsupported native category, search via keywords
+        "api_category": None,
         "keywords": ["story", "profile", "community", "hero", "obituary", "inspiring", "feature story", "tribute"]
     },
     "Artificial Intelligence & Automation": {
@@ -490,10 +531,7 @@ if "using_outside_source" not in st.session_state:
 # --- SIDEBAR CONFIGURATION ---
 st.sidebar.header("🔑 Authentication & Params")
 
-# Load API Key from hardcoded constant
 api_key = NEWSDATA_API_KEY
-
-# If it is the default placeholder, show the input field to let the user enter it
 if not api_key or api_key == "YOUR_API_KEY_HERE":
     api_key = st.sidebar.text_input(
         label="NewsData.io API Key",
@@ -531,7 +569,6 @@ max_articles = st.sidebar.slider(
     step=10
 )
 
-# Language Select box
 selected_audio_lang_label = st.sidebar.selectbox(
     label="Podcast & Summary Language",
     options=list(AUDIO_LANGUAGES.keys()),
@@ -539,7 +576,6 @@ selected_audio_lang_label = st.sidebar.selectbox(
 )
 audio_lang_code = AUDIO_LANGUAGES[selected_audio_lang_label]
 
-# Narrator Accent (Only shows if English is selected)
 accent_tld = "com"
 if audio_lang_code == "en":
     selected_accent_label = st.sidebar.selectbox(
@@ -606,12 +642,10 @@ if fetch_button:
         cat_info = CUSTOM_CATEGORIES[selected_custom_category]
         api_category = cat_info["api_category"]
         
-        # Build logical search queries to pass to the API
         cat_keywords = cat_info["keywords"][:4]
         cat_query_string = " OR ".join(f'"{kw}"' if " " in kw else kw for kw in cat_keywords)
         
         if selected_custom_category == "General":
-            # For General news, keep q simple (use user query if present, otherwise omit q to get general headlines)
             if query.strip():
                 final_q = query.strip()
             else:
@@ -677,7 +711,6 @@ if fetch_button:
                         api_error_occurred = True
                         break
                 
-                # If we successfully parsed, save results. Even if 0 results, we let display logic fall back to outside source.
                 if not api_error_occurred:
                     st.session_state["fetched_data"] = {"status": "success", "results": all_results}
                     st.session_state["last_params"] = current_params.copy()
@@ -689,7 +722,6 @@ if fetch_button:
 if st.session_state["fetched_data"] is not None:
     data = st.session_state["fetched_data"]
     
-    # Process articles
     raw_articles = data.get("results", [])
     seen_titles = set()
     
@@ -704,7 +736,6 @@ if st.session_state["fetched_data"] is not None:
         if not title_clean:
             continue
             
-        # Check similarity
         if title_clean.lower() in [t.lower() for t in seen_titles] or is_similar_to_existing(title_clean, seen_titles, threshold=0.45):
             continue
             
@@ -734,11 +765,9 @@ if st.session_state["fetched_data"] is not None:
         else:
             main_articles.append(article)
             
-    # --- FALLBACK TO OUTSIDE SOURCE (Google News RSS) IF NO INFO ---
+    # Fallback to Google News RSS
     if not main_articles and not mini_articles:
         st.session_state["using_outside_source"] = True
-        
-        # Build query for RSS
         rss_query = query.strip() if query.strip() else " OR ".join(cat_keywords[:3])
         if selected_custom_category == "General" and not query.strip():
             rss_query = "latest world news"
@@ -762,7 +791,7 @@ if st.session_state["fetched_data"] is not None:
             else:
                 main_articles.append(article)
                 
-    # --- DOCK & RANK ARTICLES ---
+    # Dock & Rank
     scored_main = []
     for art in main_articles:
         score = calculate_article_score(art, query, cat_keywords)
@@ -778,7 +807,6 @@ if st.session_state["fetched_data"] is not None:
     final_main = [art for score, art in scored_main[:max_articles]]
     final_mini = [art for score, art in scored_mini[:max_articles - len(final_main)]]
     
-    # Render Raw JSON only if we are using NewsData.io (Google News RSS parsed custom list is not raw API JSON)
     if not st.session_state["using_outside_source"]:
         with st.expander("Raw JSON Response", expanded=False):
             st.json(data)
@@ -786,7 +814,6 @@ if st.session_state["fetched_data"] is not None:
     if not final_main and not final_mini:
         st.info("ℹ️ No articles found matching your criteria.")
     else:
-        # Show Banner if utilizing Google News RSS
         if st.session_state["using_outside_source"]:
             st.warning("⚡ Sourced from Google News feeds (no data found on NewsData.io).")
             
@@ -797,24 +824,23 @@ if st.session_state["fetched_data"] is not None:
             for idx, article in enumerate(final_main):
                 title = article.get("title", "No Title Available")
                 description = (article.get("description") or "")
-                content = (article.get("content") or "")
                 
-                # Primary local summary (2-3 sentences)
-                summary_text = summarize_text_concise(title, description, content)
+                # Fetch sentiment
+                sentiment = get_news_sentiment(title, description)
                 
-                # Translate to target language
                 if auto_translate:
                     title = translate_to_target_lang(title, audio_lang_code)
-                    summary_text = translate_to_target_lang(summary_text, audio_lang_code)
+                    description = translate_to_target_lang(description, audio_lang_code)
                 
                 processed_main.append({
                     "title": title,
-                    "summary": summary_text,
+                    "summary": description,
                     "link": article.get("link", "#"),
                     "country": ", ".join(article.get("country", [])),
                     "source_id": article.get("source_id", "Unknown Source"),
                     "pub_date": article.get("pubDate", "Date not specified"),
-                    "score": scored_main[idx][0]
+                    "score": scored_main[idx][0],
+                    "sentiment": sentiment
                 })
                 
             for idx, article in enumerate(final_mini):
@@ -827,135 +853,207 @@ if st.session_state["fetched_data"] is not None:
                     "link": article.get("link", "#"),
                     "source_id": article.get("source_id", "Unknown Source"),
                     "pub_date": article.get("pubDate", "Date not specified"),
-                    "score": scored_mini[idx][0]
+                    "score": scored_mini[idx][0],
+                    "sentiment": "Neutral"
                 })
 
-        # --- UNIFIED PODCAST SECTION ---
-        st.markdown("## 🎙️ Podcast News Hub")
+        # --- VIEW TABS (PODCAST & NEWS VS EDITORIAL NEWSLETTER) ---
+        tab1, tab2 = st.tabs(["🎙️ Podcast Hub & News", "📰 Editorial Newsletter"])
         
-        col1, col2 = st.columns([2, 3])
-        with col1:
-            st.markdown(f"##### Continuous Podcast Playlist ({selected_audio_lang_label})")
-            st.write(f"Generate a continuous news briefing voice podcast covering all your selected articles in {selected_audio_lang_label}.")
+        with tab1:
+            # --- UNIFIED PODCAST SECTION ---
+            st.markdown("## 🎙️ Podcast News Hub")
             
-            # Button to trigger full podcast script compilation
-            if st.button("🎧 Generate Podcast Briefing", type="primary", use_container_width=True):
-                # Build unified script
-                if audio_lang_code == "ml":
-                    intro = f"നമസ്കാരം, {selected_custom_category} വാർത്താ പോഡ്‌കാസ്റ്റിലേക്ക് സ്വാഗതം. ഇന്നത്തെ പ്രധാന വാർത്തകൾ ഇതാ. "
-                    outro = "വാർത്തകൾ അവസാനിച്ചു. ശ്രവിച്ചതിന് നന്ദി."
-                elif audio_lang_code == "ta":
-                    intro = f"வணக்கம், {selected_custom_category} செய்திகள் பாட்காஸ்டிற்கு உங்களை வரவேற்கிறோம். இன்றைய முக்கிய செய்திகள் இதோ. "
-                    outro = "செய்திகள் நிறைவடைந்தது. கேட்டதற்கு நன்றி."
-                elif audio_lang_code == "hi":
-                    intro = f"नमस्कार, {selected_custom_category} समाचार पॉडकास्ट में आपका स्वागत है। आज के मुख्य समाचार इस प्रकार हैं। "
-                    outro = "समाचार समाप्त हुए। सुनने के लिए धन्यवाद।"
-                elif audio_lang_code == "kn":
-                    intro = f"ನಮಸ್ಕಾರ, {selected_custom_category} ಸುದ್ದಿ ಪಾಡ್‌ಕಾಸ್ಟ್‌ಗೆ ಸ್ವಾಗತ. ಇಂದಿನ ಪ್ರಮುಖ ಸುದ್ದಿಗಳು ಇಲ್ಲಿವೆ. "
-                    outro = "ಸುದ್ದಿಗಳು ಮುಗಿದವು. ಕೇಳಿದ್ದಕ್ಕಾಗಿ ಧನ್ಯವಾದಗಳು."
-                else:
-                    intro = f"Welcome to your daily news briefing podcast on {selected_custom_category}. Here is the summary of the latest events. "
-                    outro = "That concludes your news podcast update. Thank you for listening."
+            col1, col2 = st.columns([2, 3])
+            with col1:
+                st.markdown(f"##### Continuous Podcast Playlist ({selected_audio_lang_label})")
+                st.write(f"Generate a continuous modulated dual-host news briefing podcast covering all your selected articles in {selected_audio_lang_label}.")
                 
-                full_script = intro
-                for idx, art in enumerate(processed_main):
-                    if audio_lang_code in ["ml", "ta", "hi", "kn"]:
-                        full_script += f"വാർത്ത {idx + 1}. {art['title']}. {art['summary']}. "
-                    else:
-                        full_script += f"Story number {idx + 1}. {art['title']}. {art['summary']}. "
+                # Button to trigger full podcast script compilation
+                if st.button("🎧 Generate Podcast Briefing", type="primary", use_container_width=True):
+                    # Compile segments for alternating voices
+                    audio_segments = []
                     
-                if processed_mini:
                     if audio_lang_code == "ml":
-                        full_script += "മറ്റ് പ്രധാന വിവരങ്ങൾ ചുരുക്കത്തിൽ ഇതാ. "
+                        intro = f"നമസ്കാരം, {selected_custom_category} വാർത്താ പോഡ്‌കാസ്റ്റിലേക്ക് സ്വാഗതം. ഇന്നത്തെ പ്രധാന വാർത്തകൾ ഇതാ. "
+                        outro = "വാർത്തകൾ അവസാനിച്ചു. ശ്രവിച്ചതിന് നന്ദി."
                     elif audio_lang_code == "ta":
-                        full_script += "இதர செய்திகள் சுருக்கமாக இதோ. "
+                        intro = f"வணக்கம், {selected_custom_category} செய்திகள் பாட்காஸ்டிற்கு உங்களை வரவேற்கிறோம். இன்றைய முக்கிய செய்திகள் இதೋ. "
+                        outro = "செய்திகள் நிறைவடைந்தது. கேட்டதற்கு நன்றி."
                     elif audio_lang_code == "hi":
-                        full_script += "अन्य समाचार संक्षेप में। "
+                        intro = f"नमस्कार, {selected_custom_category} समाचार पॉडकास्ट में आपका स्वागत है। आज के मुख्य समाचार इस प्रकार हैं। "
+                        outro = "समाचार समाप्त हुए। सुनने के लिए धन्यवाद।"
                     elif audio_lang_code == "kn":
-                        full_script += "ಇತರ ಸುದ್ದಿಗಳು ಸಂಕ್ಷಿಪ್ತವಾಗಿ ಇಲ್ಲಿವೆ. "
+                        intro = f"ನಮಸ್ಕಾರ, {selected_custom_category} ಸುದ್ದಿ ಪಾಡ್‌ಕಾಸ್ಟ್‌ಗೆ ಸ್ವಾಗತ. ಇಂದಿನ ಪ್ರಮುಖ ಸುದ್ದಿಗಳು ಇಲ್ಲಿವೆ. "
+                        outro = "ಸುದ್ದಿಗಳು ಮುಗಿದವು. ಕೇಳಿದ್ದಕ್ಕಾಗಿ ಧನ್ಯವಾದಗಳು."
                     else:
-                        full_script += "Here are some quick bullet updates. "
+                        intro = f"Welcome to your daily news briefing podcast on {selected_custom_category}. Here is the summary of the latest events. "
+                        outro = "That concludes your news podcast update. Thank you for listening."
+                    
+                    audio_segments.append((intro, 0))
+                    
+                    for idx, art in enumerate(processed_main):
+                        host_num = idx % 2 # Alternate Host 0 and Host 1
+                        if audio_lang_code in ["ml", "ta", "hi", "kn"]:
+                            body = f"വാർത്ത {idx + 1}. {art['title']}. {art['summary']}. "
+                        else:
+                            body = f"Story number {idx + 1}. {art['title']}. {art['summary']}. "
+                        audio_segments.append((body, host_num))
                         
-                    for art in processed_mini:
-                        full_script += f"{art['title']}. "
+                    if processed_mini:
+                        if audio_lang_code == "ml":
+                            bullet_intro = "മറ്റ് പ്രധാന വിവരങ്ങൾ ചുരുക്കത്തിൽ ഇതാ. "
+                        elif audio_lang_code == "ta":
+                            bullet_intro = "இதர செய்திகள் சுருக்கமாக இதோ. "
+                        elif audio_lang_code == "hi":
+                            bullet_intro = "अन्य समाचार संक्षेप में। "
+                        elif audio_lang_code == "kn":
+                            bullet_intro = "ಇತರ ಸುದ್ದಿಗಳು ಸಂಕ್ಷಿಪ್ತವಾಗಿ ಇಲ್ಲಿವೆ. "
+                        else:
+                            bullet_intro = "Here are some quick bullet updates. "
+                        audio_segments.append((bullet_intro, 0))
                         
-                full_script += outro
+                        for idx, art in enumerate(processed_mini):
+                            host_num = idx % 2
+                            audio_segments.append((art['title'] + ". ", host_num))
+                            
+                    audio_segments.append((outro, 0))
+                    
+                    with st.spinner(f"Generating modulated podcast audio in {selected_audio_lang_label}..."):
+                        audio_file = generate_dual_host_audio(audio_segments, lang_code=audio_lang_code, accent_tld=accent_tld)
+                        if audio_file:
+                            st.audio(audio_file, format="audio/mp3", autoplay=True)
+                            st.success("🎧 Podcast generated successfully! Play or download it below.")
+                            
+                            # Podcast Download button
+                            st.download_button(
+                                label="💾 Download Podcast MP3",
+                                data=audio_file,
+                                file_name=f"podcast_{selected_custom_category}_{datetime.now().strftime('%Y%m%d')}.mp3",
+                                mime="audio/mp3",
+                                use_container_width=True
+                            )
+                            
+            with col2:
+                # --- SENTIMENT DASHBOARD CHART ---
+                sentiments = [art['sentiment'] for art in processed_main] + [art['sentiment'] for art in processed_mini]
+                pos_count = sentiments.count("Positive")
+                neg_count = sentiments.count("Negative")
+                neu_count = sentiments.count("Neutral")
                 
-                with st.spinner(f"Generating unified podcast audio in {selected_audio_lang_label}..."):
-                    audio_file = generate_audio(full_script, lang=audio_lang_code, tld=accent_tld)
-                    if audio_file:
-                        st.audio(audio_file, format="audio/mp3", autoplay=True)
-                        st.success("🎧 Podcast generated successfully! Press play above.")
-                        
-        with col2:
-            st.info(f"🎤 **Language:** {selected_audio_lang_label}\n\n"
-                    f"📰 **Stats:** {len(processed_main)} main stories, {len(processed_mini)} mini bulletins ranked.")
-
-        st.markdown("---")
-        
-        # Display Main News Cards
-        if processed_main:
-            st.markdown(f"### 📰 Featured Stories under **{selected_custom_category}** (Ranked by Relevancy & Date)")
-            for idx, art in enumerate(processed_main):
-                # Highlight trusted source indicator
-                source_display = art['source_id']
-                is_trusted_label = False
-                for ts in TRUSTED_SOURCE_SUBSTRINGS:
-                    if ts in art['source_id'].lower():
-                        is_trusted_label = True
-                        break
+                st.markdown("##### 📊 Daily News Sentiment Profile")
+                chart_data = {
+                    "Positive 🙂": pos_count,
+                    "Neutral 😐": neu_count,
+                    "Negative 🙁": neg_count
+                }
+                st.bar_chart(chart_data)
                 
-                trusted_badge = '<span class="badge" style="background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71;">⭐ Trusted Source</span>' if is_trusted_label else ''
-                
-                card_html = f"""
-                <div class="article-card">
-                    <div class="article-title"><a href="{art['link']}" target="_blank">{art['title']}</a></div>
-                    <div class="meta-container">
-                        <span class="badge badge-category">{selected_custom_category}</span>
-                        <span class="badge badge-country">Country: {art['country']}</span>
-                        <span class="badge badge-source">Source: {source_display}</span>
-                        {trusted_badge}
-                        <span class="badge badge-score">🔥 Match Score: {art['score']}</span>
-                    </div>
-                    <div style="font-size: 0.98rem; margin-bottom: 0.8rem; line-height: 1.5; font-style: italic; border-left: 2px solid #FF4B4B; padding-left: 8px;">
-                        {art['summary']}
-                    </div>
-                    <div class="article-date">📅 Published: {art['pub_date']}</div>
-                </div>
-                """
-                st.markdown(card_html, unsafe_allow_html=True)
-                
-                # Individual audio player inside an expander
-                with st.expander(f"🔊 Listen in {selected_audio_lang_label}: {art['title'][:40]}...", expanded=False):
-                    if st.button("Generate Audio", key=f"tts_{art['title'][:15]}_{art['pub_date']}"):
-                        with st.spinner("Generating audio..."):
-                            single_text = f"{art['title']}. {art['summary']}"
-                            single_audio = generate_audio(single_text, lang=audio_lang_code, tld=accent_tld)
-                            if single_audio:
-                                st.audio(single_audio, format="audio/mp3", autoplay=True)
-
-        # Display Mini Bulletins (Without descriptions)
-        if processed_mini:
             st.markdown("---")
-            st.markdown("### ⚡ Mini News Bulletins (Quick Updates)")
             
-            for art in processed_mini:
-                st.markdown(f"""
-                <div style="padding: 0.75rem 1rem; border-left: 3px solid #6c5ce7; background: rgba(108, 92, 231, 0.05); margin-bottom: 0.75rem; border-radius: 0 8px 8px 0;">
-                    <strong style="font-size: 1.05rem;"><a href="{art['link']}" target="_blank" style="color: inherit; text-decoration: none;">{art['title']}</a></strong>
-                    <div style="font-size: 0.8rem; margin-top: 0.3rem; color: #7f8c8d;">
-                        Source: <b>{art['source_id']}</b> | Published: {art['pub_date']} | Match Score: <b>{art['score']}</b>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            # Display Main News Cards
+            if processed_main:
+                st.markdown(f"### 📰 Featured Stories under **{selected_custom_category}** (Ranked by Relevancy & Date)")
+                for art in processed_main:
+                    source_display = art['source_id']
+                    is_trusted_label = False
+                    for ts in TRUSTED_SOURCE_SUBSTRINGS:
+                        if ts in art['source_id'].lower():
+                            is_trusted_label = True
+                            break
+                    
+                    trusted_badge = '<span class="badge" style="background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71;">⭐ Trusted Source</span>' if is_trusted_label else ''
+                    
+                    # Sentiment badge
+                    if art['sentiment'] == "Positive":
+                        sent_badge = '<span class="badge" style="background-color: rgba(46, 204, 113, 0.15); color: #2ecc71;">🙂 Positive</span>'
+                    elif art['sentiment'] == "Negative":
+                        sent_badge = '<span class="badge" style="background-color: rgba(231, 76, 60, 0.15); color: #e74c3c;">🙁 Negative</span>'
+                    else:
+                        sent_badge = '<span class="badge" style="background-color: rgba(149, 165, 166, 0.15); color: #95a5a6;">😐 Neutral</span>'
+                    
+                    card_html = f"""<div class="article-card">
+<div class="article-title"><a href="{art['link']}" target="_blank">{art['title']}</a></div>
+<div class="meta-container">
+<span class="badge badge-category">{selected_custom_category}</span>
+<span class="badge badge-country">Country: {art['country']}</span>
+<span class="badge badge-source">Source: {source_display}</span>
+{trusted_badge}
+{sent_badge}
+<span class="badge badge-score">🔥 Match Score: {art['score']}</span>
+</div>
+<div style="font-size: 0.98rem; margin-bottom: 0.8rem; line-height: 1.5; font-style: italic; border-left: 2px solid #FF4B4B; padding-left: 8px;">
+{art['summary']}
+</div>
+<div class="article-date">📅 Published: {art['pub_date']}</div>
+</div>"""
+                    st.markdown(card_html, unsafe_allow_html=True)
+                    
+                    # Individual audio player inside an expander
+                    with st.expander(f"🔊 Listen in {selected_audio_lang_label}: {art['title'][:40]}...", expanded=False):
+                        if st.button("Generate Audio", key=f"tts_{art['title'][:15]}_{art['pub_date']}"):
+                            with st.spinner("Generating audio..."):
+                                single_text = f"{art['title']}. {art['summary']}"
+                                single_audio = generate_audio(single_text, lang=audio_lang_code, tld=accent_tld)
+                                if single_audio:
+                                    st.audio(single_audio, format="audio/mp3", autoplay=True)
+
+            # Display Mini Bulletins (Without descriptions)
+            if processed_mini:
+                st.markdown("---")
+                st.markdown("### ⚡ Mini News Bulletins (Quick Updates)")
                 
-                # Small individual player for bullet updates
-                with st.expander(f"🔊 Listen to Bulletin: {art['title'][:35]}...", expanded=False):
-                    if st.button("Generate Bulletin Audio", key=f"tts_mini_{art['title'][:15]}_{art['pub_date']}"):
-                        with st.spinner("Generating audio..."):
-                            single_audio = generate_audio(art['title'], lang=audio_lang_code, tld=accent_tld)
-                            if single_audio:
-                                st.audio(single_audio, format="audio/mp3", autoplay=True)
+                for art in processed_mini:
+                    st.markdown(f"""<div style="padding: 0.75rem 1rem; border-left: 3px solid #6c5ce7; background: rgba(108, 92, 231, 0.05); margin-bottom: 0.75rem; border-radius: 0 8px 8px 0;">
+<strong style="font-size: 1.05rem;"><a href="{art['link']}" target="_blank" style="color: inherit; text-decoration: none;">{art['title']}</a></strong>
+<div style="font-size: 0.8rem; margin-top: 0.3rem; color: #7f8c8d;">
+Source: <b>{art['source_id']}</b> | Published: {art['pub_date']} | Match Score: <b>{art['score']}</b>
+</div>
+</div>""", unsafe_allow_html=True)
+                    
+                    with st.expander(f"🔊 Listen to Bulletin: {art['title'][:35]}...", expanded=False):
+                        if st.button("Generate Bulletin Audio", key=f"tts_mini_{art['title'][:15]}_{art['pub_date']}"):
+                            with st.spinner("Generating audio..."):
+                                single_audio = generate_audio(art['title'], lang=audio_lang_code, tld=accent_tld)
+                                if single_audio:
+                                    st.audio(single_audio, format="audio/mp3", autoplay=True)
+
+        with tab2:
+            # --- EDITORIAL NEWSLETTER TAB ---
+            st.markdown("## 📰 Morning Briefing Editorial Newsletter")
+            st.write(f"Read or download a clean, structured text digest of the latest news in **{selected_audio_lang_label}**.")
+            
+            # Build Newsletter Text String
+            newsletter_str = f"# DAILY EDITORIAL BRIEFING - {selected_custom_category.upper()}\n"
+            newsletter_str += f"Date: {datetime.now().strftime('%Y-%m-%d')} | Target Edition: {country_name_clean}\n"
+            newsletter_str += "="*60 + "\n\n"
+            
+            if processed_main:
+                newsletter_str += "## FEATURED TOP STORIES\n\n"
+                for idx, art in enumerate(processed_main):
+                    newsletter_str += f"{idx+1}. {art['title']}\n"
+                    newsletter_str += f"Source: {art['source_id']} | Date: {art['pub_date']}\n"
+                    newsletter_str += f"Summary: {art['summary']}\n"
+                    newsletter_str += f"Link: {art['link']}\n"
+                    newsletter_str += "-"*40 + "\n\n"
+                    
+            if processed_mini:
+                newsletter_str += "## QUICK BULLETINS\n\n"
+                for art in processed_mini:
+                    newsletter_str += f"• {art['title']} (Source: {art['source_id']})\n"
+                    newsletter_str += f"  Link: {art['link']}\n\n"
+                    
+            # Render Newsletter on Screen inside code box for copying
+            st.text_area(label="Newsletter Content (Markdown format)", value=newsletter_str, height=450)
+            
+            # Download Button
+            st.download_button(
+                label="📥 Download Newsletter Document (.txt)",
+                data=newsletter_str,
+                file_name=f"newsletter_{selected_custom_category}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
 else:
     # Initial state helper message
     st.info("👈 Configure your parameters, then click **Fetch News Data** to test.")
