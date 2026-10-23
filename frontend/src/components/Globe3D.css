@@ -1,0 +1,118 @@
+/* 3D WebGL Globe Styles */
+
+.globe-3d-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 480px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.globe-3d-canvas-container {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.globe-3d-canvas-container:active {
+  cursor: grabbing;
+}
+
+/* Floating 3D Category Tags */
+.cat-tag-3d {
+  position: absolute;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.cat-dot-3d {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+}
+
+/* Positions */
+.tag-world {
+  top: 10%;
+  left: 2%;
+}
+
+.tag-tech {
+  top: 12%;
+  right: 2%;
+}
+
+.tag-business {
+  bottom: 14%;
+  left: 4%;
+}
+
+.tag-health {
+  bottom: 12%;
+  right: 4%;
+}
+
+/* Dark Theme Tag Styling */
+.globe-3d-wrapper.dark .cat-tag-3d {
+  background: rgba(10, 28, 54, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+}
+
+/* Light Theme Tag Styling */
+.globe-3d-wrapper.light .cat-tag-3d {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+}
+
+/* Dot Accents */
+.dot-tech {
+  background-color: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+}
+
+.dot-world {
+  background-color: #a855f7;
+  box-shadow: 0 0 8px #a855f7;
+}
+
+.dot-biz {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.dot-health {
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .globe-3d-wrapper {
+    max-width: 320px;
+    height: 320px;
+  }
+  .cat-tag-3d {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+  }
+  .tag-world { top: 4%; left: 0%; }
+  .tag-tech { top: 6%; right: 0%; }
+  .tag-business { bottom: 6%; left: 0%; }
+  .tag-health { bottom: 4%; right: 0%; }
+}

@@ -1,0 +1,174 @@
+/* Navbar Styles */
+
+.navbar-container {
+  width: 100%;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--nav-bg);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.navbar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Brand */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+.brand-icon {
+  font-size: 1.25rem;
+}
+
+.brand-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+/* Navigation Links */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.nav-link {
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+  position: relative;
+  padding: 0.25rem 0;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  color: var(--text-primary);
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--accent-red);
+  border-radius: 2px;
+}
+
+/* Right Actions */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* API Connection Indicator */
+.api-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.indicator-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.api-indicator.connected .indicator-dot {
+  background-color: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.api-indicator.connected {
+  color: var(--text-secondary);
+}
+
+.api-indicator.pending .indicator-dot {
+  background-color: #f59e0b;
+}
+
+.api-indicator.pending {
+  color: #f59e0b;
+}
+
+.api-indicator.error .indicator-dot {
+  background-color: #ef4444;
+}
+
+.api-indicator.error {
+  color: #ef4444;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--surface-card);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.theme-icon {
+  font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .navbar-content {
+    padding: 0.75rem 1rem;
+  }
+  .navbar-links {
+    display: none;
+  }
+  .theme-label {
+    display: none;
+  }
+  .indicator-label {
+    display: none;
+  }
+  .api-indicator {
+    padding: 0.35rem;
+  }
+}

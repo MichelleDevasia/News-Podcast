@@ -1,0 +1,168 @@
+/* Masthead Newspaper Styles */
+
+.masthead-container {
+  width: 100%;
+  border-bottom: 2px solid var(--border-color);
+  background-color: var(--nav-bg);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Top Utility Line */
+.masthead-topbar {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0.5rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.masthead-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edition-tag {
+  color: var(--accent-red);
+}
+
+.dot-sep {
+  opacity: 0.4;
+}
+
+.masthead-utils {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Health status dot */
+.masthead-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+}
+
+.health-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+}
+
+.masthead-health.connected .health-dot {
+  background-color: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.masthead-health.connected {
+  color: var(--text-secondary);
+}
+
+.masthead-health.error .health-dot {
+  background-color: #ef4444;
+}
+
+.masthead-health.pending .health-dot {
+  background-color: #f59e0b;
+}
+
+/* Theme button in masthead */
+.masthead-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.2rem 0.55rem;
+  color: var(--text-primary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.masthead-theme-btn:hover {
+  background: var(--surface-secondary);
+  border-color: var(--border-hover);
+}
+
+.theme-emoji {
+  font-size: 0.8rem;
+}
+
+/* Main Masthead Title Block */
+.masthead-main {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.masthead-emblem-left,
+.masthead-emblem-right {
+  width: 48px;
+  font-size: 1.6rem;
+  opacity: 0.75;
+}
+
+.masthead-title-wrap {
+  cursor: pointer;
+  user-select: none;
+}
+
+.masthead-title {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.05;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.masthead-tagline {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0.4rem 0 0 0;
+  letter-spacing: 0.02em;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .masthead-topbar {
+    padding: 0.4rem 1rem;
+    font-size: 0.7rem;
+  }
+  .edition-tag {
+    display: none;
+  }
+  .masthead-title {
+    font-size: 2.2rem;
+  }
+  .masthead-tagline {
+    font-size: 0.85rem;
+  }
+  .masthead-emblem-left,
+  .masthead-emblem-right {
+    display: none;
+  }
+  .masthead-main {
+    justify-content: center;
+    padding: 1rem;
+  }
+}

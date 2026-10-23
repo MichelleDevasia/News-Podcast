@@ -1,0 +1,245 @@
+/* Globe Visual Styles & Keyframe Animations */
+
+.globe-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.globe-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.25));
+}
+
+/* --- Theme-Specific Globe Colours --- */
+.globe-wrapper.dark .ocean-sphere {
+  fill: #06182c;
+  stroke: rgba(56, 189, 248, 0.45);
+  stroke-width: 1.5;
+}
+
+.globe-wrapper.dark .continent-land {
+  fill: #1e40af;
+  stroke: #3b82f6;
+  stroke-width: 0.8;
+  opacity: 0.95;
+}
+
+.globe-wrapper.dark .grid-line {
+  stroke: rgba(56, 189, 248, 0.16);
+  fill: none;
+  stroke-width: 0.75;
+}
+
+.globe-wrapper.dark .orbit-ring {
+  stroke: rgba(56, 189, 248, 0.3);
+  fill: none;
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.globe-wrapper.dark .orbit-satellite {
+  fill: #38bdf8;
+  filter: drop-shadow(0 0 6px #38bdf8);
+}
+
+.globe-wrapper.dark .beacon {
+  fill: #ef4444;
+  animation: beacon-pulse 2.2s infinite ease-in-out;
+}
+
+/* Light Theme Globe Colours */
+.globe-wrapper.light .ocean-sphere {
+  fill: #e0f2fe;
+  stroke: rgba(2, 132, 199, 0.4);
+  stroke-width: 1.5;
+}
+
+.globe-wrapper.light .continent-land {
+  fill: #0284c7;
+  stroke: #0369a1;
+  stroke-width: 0.8;
+  opacity: 0.9;
+}
+
+.globe-wrapper.light .grid-line {
+  stroke: rgba(2, 132, 199, 0.2);
+  fill: none;
+  stroke-width: 0.75;
+}
+
+.globe-wrapper.light .orbit-ring {
+  stroke: rgba(2, 132, 199, 0.35);
+  fill: none;
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.globe-wrapper.light .orbit-satellite {
+  fill: #0284c7;
+  filter: drop-shadow(0 0 4px rgba(2, 132, 199, 0.5));
+}
+
+.globe-wrapper.light .beacon {
+  fill: #dc2626;
+  animation: beacon-pulse 2.2s infinite ease-in-out;
+}
+
+/* Continents Seamless Rotation */
+.continents-track {
+  animation: rotateEarth 26s linear infinite;
+}
+
+@keyframes rotateEarth {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-320px);
+  }
+}
+
+@keyframes beacon-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+
+/* --- Floating News Category Indicators --- */
+.category-indicator {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.cat-line {
+  height: 1px;
+}
+
+/* Category Placements */
+.cat-world {
+  top: 14%;
+  left: -4%;
+  flex-direction: row-reverse;
+}
+
+.cat-tech {
+  top: 18%;
+  right: -4%;
+  flex-direction: row;
+}
+
+.cat-business {
+  bottom: 20%;
+  left: -2%;
+  flex-direction: row-reverse;
+}
+
+.cat-health {
+  bottom: 16%;
+  right: -2%;
+  flex-direction: row;
+}
+
+/* Dark mode badges */
+.globe-wrapper.dark .cat-badge {
+  background: rgba(15, 30, 54, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.globe-wrapper.dark .cat-line {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.4), transparent);
+}
+
+.globe-wrapper.dark .cat-world .cat-line,
+.globe-wrapper.dark .cat-business .cat-line {
+  background: linear-gradient(-90deg, rgba(56, 189, 248, 0.4), transparent);
+}
+
+/* Light mode badges */
+.globe-wrapper.light .cat-badge {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
+
+.globe-wrapper.light .cat-line {
+  background: linear-gradient(90deg, rgba(2, 132, 199, 0.35), transparent);
+}
+
+.globe-wrapper.light .cat-world .cat-line,
+.globe-wrapper.light .cat-business .cat-line {
+  background: linear-gradient(-90deg, rgba(2, 132, 199, 0.35), transparent);
+}
+
+.cat-line {
+  width: 32px;
+}
+
+/* Dot colors */
+.dot-tech { background-color: #38bdf8; box-shadow: 0 0 6px #38bdf8; }
+.dot-world { background-color: #a855f7; box-shadow: 0 0 6px #a855f7; }
+.dot-biz { background-color: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.dot-health { background-color: #10b981; box-shadow: 0 0 6px #10b981; }
+
+/* Responsive Adjustments */
+@media (max-width: 640px) {
+  .globe-wrapper {
+    max-width: 340px;
+  }
+  .cat-badge {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.68rem;
+  }
+  .cat-line {
+    width: 16px;
+  }
+  .cat-world { left: 0%; top: 8%; }
+  .cat-tech { right: 0%; top: 12%; }
+  .cat-business { left: 0%; bottom: 12%; }
+  .cat-health { right: 0%; bottom: 10%; }
+}
+
+/* Accessibility: Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .continents-track,
+  .beacon,
+  .orbit-satellite {
+    animation: none !important;
+  }
+}
